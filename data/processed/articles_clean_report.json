@@ -1,0 +1,39 @@
+{
+  "hf_revision": "bd8d2a865c8981d34cb9d85f69f62bda7c40b520",
+  "min_words": 78,
+  "rows": 463995,
+  "rows_by_source_origin": {
+    "crawl_2026|Thanh Niên": 77090,
+    "crawl_2026|Tuổi Trẻ": 65607,
+    "crawl_2026|VietnamNet": 55573,
+    "vietonlinenews|Thanh Niên": 95705,
+    "vietonlinenews|Tuổi Trẻ": 52694,
+    "vietonlinenews|VietnamNet": 117326
+  },
+  "date_range": [
+    "2023-01-01",
+    "2026-11-07"
+  ],
+  "median_per_day_by_year": {
+    "2023": {
+      "Tuổi Trẻ": 28.0,
+      "Thanh Niên": 74.0,
+      "VietnamNet": 101.0
+    },
+    "2024": {
+      "Tuổi Trẻ": 46.0,
+      "Thanh Niên": 86.0,
+      "VietnamNet": 104.5
+    },
+    "2025": {
+      "Tuổi Trẻ": 72.0,
+      "Thanh Niên": 106.0,
+      "VietnamNet": 118.0
+    },
+    "2026": {
+      "Tuổi Trẻ": 215.0,
+      "Thanh Niên": 257.0,
+      "VietnamNet": 184.0
+    }
+  }
+}
