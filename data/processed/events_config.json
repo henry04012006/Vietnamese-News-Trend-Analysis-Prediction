@@ -1,0 +1,16 @@
+{
+  "input": "articles_clean.parquet",
+  "date_from": null,
+  "rows": 463995,
+  "embedding": "bkai-foundation-models/vietnamese-bi-encoder",
+  "ner": "underthesea",
+  "match_t": 0.72,
+  "uncertain_t": 0.65,
+  "max_gap_days": 3,
+  "max_event_days": 14,
+  "entity_weight": 0.15,
+  "entity_conflict_penalty": 0.0,
+  "recent_k": 5,
+  "centroid_weight": 0.5,
+  "routine_articles": 12659
+}
