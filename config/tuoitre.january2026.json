@@ -1,0 +1,7 @@
+{
+  "extends": "tuoitre.json",
+  "start_date": "2026-01-01",
+  "end_date": "2026-01-31",
+  "output": {"directory": "data/tuoitre/pilot_2026-01"},
+  "backfill": {"max_attempts_per_run": null, "retry_errors_on_resume": true}
+}

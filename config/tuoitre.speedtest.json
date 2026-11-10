@@ -1,0 +1,5 @@
+{
+  "extends": "tuoitre.january2026.json",
+  "http": {"delay_seconds": 0.25, "workers": 3, "prefetch": 6},
+  "backfill": {"max_attempts_per_run": 100, "retry_errors_on_resume": false}
+}

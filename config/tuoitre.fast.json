@@ -1,0 +1,4 @@
+{
+  "extends": "tuoitre.json",
+  "http": {"delay_seconds": 0.25, "workers": 3, "prefetch": 6}
+}

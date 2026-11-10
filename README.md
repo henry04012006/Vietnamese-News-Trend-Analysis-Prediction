@@ -237,3 +237,161 @@ Các mục dưới đây **cố ý chưa chốt**, để nhóm kiểm chứng tr
 - [NeuralForecast](https://github.com/Nixtla/neuralforecast)
 
 > **Ghi chú:** Các repo/paper trên là nguồn nghiên cứu, không phải danh sách công nghệ bắt buộc. Nhóm sẽ lựa chọn phương pháp cụ thể sau khi kiểm tra dữ liệu và đánh giá thực nghiệm.
+
+## 8. Crawler Tuổi Trẻ — chạy mẫu trước
+
+Yêu cầu Python 3.11+. Cài dependency và kiểm tra:
+
+```powershell
+python -m pip install -r requirements-crawl.txt
+python -m pytest -q
+python crawl_tuoitre.py category-sample --config config/tuoitre.json
+```
+
+Thông số nằm trong `config/tuoitre.json`: nguồn/sitemap, thời gian, selectors,
+schema, quy tắc URL/ID, delay, timeout, retry, tên file và tiêu chí kiểm tra.
+`categories` chứa đúng 18 tên/URL chuyên mục được yêu cầu. Chế độ `category-sample`
+đọc từng trang, chọn tối đa `category_sample.max_candidates` URL ứng viên (mặc định 6),
+dừng khi có `category_sample.per_category` bài hợp lệ mỗi nhóm (mặc định 2).
+Danh sách ứng viên được lưu cố định để resume. Nếu muốn đổi danh sách hoặc lấy mẫu mới,
+dùng thư mục `output.directory` mới trong bản config riêng.
+
+`category` lấy từ chuyên mục chính trong breadcrumb, rồi fallback `article:section`;
+tên/aliases chuẩn hóa theo config. Không dùng mô hình phân loại nội dung. Bài được
+giới thiệu ở nhiều trang vẫn giữ category chính thức của trang bài. Nếu không khớp nhóm
+đang lấy mẫu, ghi log và thử ứng viên tiếp theo; không gán lại nhãn để đủ quota.
+
+Video được nhận diện bằng đường dẫn `/video/`. Nếu thân bài không có text, `content`
+dùng mô tả do Tuổi Trẻ đăng; không tải video hoặc tạo transcript. Trường hợp không có
+category thuộc danh sách hoặc thiếu text sẽ được ghi lỗi.
+
+Chế độ mẫu theo thời gian vẫn có thể chạy riêng:
+
+```powershell
+python crawl_tuoitre.py sample --config config/tuoitre.json
+```
+
+Chế độ này chọn 20 URL từ sitemap mới nhất và 10 URL trải đều trong sitemap đầu năm;
+không bảo đảm đủ 18 chuyên mục.
+
+Đầu ra trong `data/tuoitre/` (được `.gitignore` bỏ qua):
+
+- `sample_tuoitre_categories.csv`: mẫu mới đủ 18 chuyên mục, UTF-8 BOM.
+- `category-sample_urls.json`: các URL ứng viên cùng trang/chuyên mục nguồn và URL cuối nếu có redirect.
+- `category-sample_report.json`: số hợp lệ theo từng category, quota còn thiếu và kiểm tra chất lượng.
+- `category-sample_errors.jsonl`: URL lỗi/lệch chuyên mục theo từng lần thử.
+- `category_sample_html/`: HTML gốc của các bài trong mẫu chuyên mục.
+- `sample_tuoitre.csv`: bài hợp lệ, UTF-8 BOM để mở tiếng Việt trong Excel; giữ xuống dòng trong content.
+- `sample_urls.json`: 30 URL thử, nhóm mới/cũ, sitemap và URL sau redirect nếu có.
+- `sample_report.json`: số bài, lỗi, trường thiếu, trùng lặp, phạm vi thời gian và kết quả kiểm tra tự động. `attempted`/`saved` là số của lượt chạy hiện tại; `total_valid` là tổng trong CSV.
+- `sample_errors.jsonl`: lịch sử lỗi theo từng lần thử; một URL có thể xuất hiện nhiều lần.
+- `sample_html/`: HTML gốc của bài hợp lệ để đối chiếu.
+
+Ngày đăng lấy từ `datePublished` (fallback `article:published_time`), yêu cầu timezone;
+không dùng ngày sửa hoặc ngày crawl thay thế. Nội dung bỏ ảnh/chú thích ảnh, quảng cáo
+và hộp tin liên quan. Layout không có tiêu đề/thân bài phù hợp sẽ được ghi lỗi.
+`description` có thể trống; `category` là trường bắt buộc. Bài dưới ngưỡng độ dài chỉ gắn cờ.
+
+Kết quả mẫu chuyên mục ngày 07/11/2026: **36 bài, 18 nhóm × 2 bài**, từ 40 lượt thử
+trong 108 URL ứng viên. Không thiếu category hoặc trùng URL/ID; có 4 trường hợp lỗi/lệch nhóm
+được ghi log. Xem [báo cáo chuyên mục](docs/tuoitre_category_sample_review.md).
+
+Mẫu theo thời gian trước đó có **29/30 URL hợp lệ** (19 mới, 10 đầu năm), xem
+[đối chiếu mẫu cũ](docs/tuoitre_sample_review.md). CSV cũ đã được bổ sung category từ HTML
+đã lưu, giữ nguyên các trường còn lại; bản trước cập nhật nằm trong `sample_tuoitre_before_categories.csv`.
+Trong mẫu cũ có 3 bài ngoài danh sách 18 nhóm: `Cần biết` và `Tin tức thị trường`;
+giữ nguyên nhãn nguồn để đối chiếu, không ép sang nhóm khác.
+Mẫu này chưa chứng minh độ phủ toàn bộ website hoặc mọi dạng bài.
+
+### Backfill sau khi kiểm tra mẫu
+
+**Đã được yêu cầu tiếp tục theo từng tháng, từ 01/01/2026 đến 07/11/2026.** Hàng đợi
+đang resume tháng 1 và sẽ tự chuyển tuần tự sang tháng sau:
+
+```powershell
+python crawl_tuoitre_monthly.py --config config/tuoitre.fast.json
+```
+
+Xem [hướng dẫn crawl theo tháng](docs/tuoitre_monthly_crawl.md). Không khởi chạy lệnh này
+lần nữa khi hàng đợi hiện tại còn chạy. Các tháng chưa hoàn thành vẫn được đánh dấu pending;
+không coi việc tạo hàng đợi là đã crawl xong dữ liệu.
+
+Nếu chỉ cần chạy/resume riêng tháng 1, config kế thừa chính sách chung từ `tuoitre.json`:
+
+```powershell
+python crawl_tuoitre.py backfill --config config/tuoitre.january2026.json
+```
+
+Không chạy thêm một writer cùng thư mục. Xem
+[bằng chứng resume pilot](docs/tuoitre_january_pilot.md).
+Lệnh core cho một khoảng ngày riêng trong config là:
+
+```powershell
+python crawl_tuoitre.py backfill --config config/tuoitre.json
+```
+
+Lệnh này không tự chạy sau sample. Nó đọc sitemap trong khoảng config, kiểm tra ngày đăng
+thực tế và lưu vào `tuoitre_YYYY-MM.csv` theo tháng đăng, từ 01/01/2026 đến ngày chạy
+(hoặc `end_date` nếu được đặt). `sitemap_lookback_months` cho phép nhìn lùi tháng trước;
+chỉ đọc kỳ có ngày kết thúc cộng `sitemap_boundary_overlap_days` giao với khoảng yêu cầu.
+Ngày đăng thực tế ngoài khoảng được ghi `outside_range` và không lưu. Đây là CLI để backfill/cập nhật thủ công,
+chưa có scheduler. Có thể thử một tháng bằng bản config riêng với `start_date`/`end_date`
+và thư mục đầu ra riêng trước khi chạy hết.
+
+Backfill lịch sử dùng sitemap để tìm URL, sau đó đọc category chính thức của từng bài
+và chỉ nhận các nhóm trong config. Hai chế độ mẫu không chứng minh độ phủ lịch sử;
+trang đầu của 18 chuyên mục không được coi là toàn bộ bài từ đầu năm. `additional_sitemap_indexes`
+bổ sung index Video lịch sử. Đã đọc được các kỳ năm 2026 và kiểm tra một Video tháng 1;
+độ phủ toàn tháng/năm vẫn phải đánh giá sau crawl.
+
+Nhãn con đọc từ breadcrumb HTML hoặc `BreadcrumbList` JSON-LD. `category_routes` ánh xạ
+nhánh `/chung-khoan/` về Kinh doanh theo cấu trúc nguồn; bài “Tin tức thị trường” vì thế
+không bị loại chỉ vì nhãn con. `excluded_categories` liệt kê những nhánh ngoài 18 nhóm
+đã xác minh (Cần biết, Thư giãn, Thời tiết); các category không nhận diện khác vẫn là lỗi
+cần xem lại, không tự suy đoán từ nội dung.
+
+Config gốc tải tuần tự, cách nhau tối thiểu **1 giây** giữa các lần bắt đầu request. Hàng đợi
+hiện dùng `tuoitre.fast.json`: **3 worker**, prefetch **6**, khoảng cách chung **0,25 giây**
+(tối đa 4 lượt bắt đầu request/giây cho toàn bộ worker). Nếu robots quy định crawl-delay
+lớn hơn thì dùng giá trị lớn hơn. Timeout/5xx
+retry giới hạn. Robots từ chối hoặc HTTP 401/403/429 sẽ dừng toàn lượt chạy.
+Mỗi bài được ghi CSV ngay; RAM chỉ giữ các trường metadata trong `output.backfill_memory_fields`
+và cờ chất lượng. `output.csv_field_limit` cấu hình giới hạn đọc trường CSV dài.
+`backfill_urls.json` đóng băng manifest và khoảng ngày; chạy lại cùng output phải dùng cùng
+khoảng ngày. `backfill_results.jsonl` lưu kết quả cuối theo requested URL cùng URL sau redirect.
+Chạy lại bỏ qua bản ghi đã lưu, các URL đã xác định ngoài scope/ngày; URL lỗi được retry
+theo `backfill.retry_errors_on_resume`. `backfill.max_attempts_per_run` cho phép giới hạn
+lượt thử để kiểm tra checkpoint (`null` để chạy hết manifest).
+
+Report cập nhật sau mỗi `progress_every` lượt và khi kết thúc. `attempted`/`saved`/`errors`
+là số của lượt hiện tại; `total_valid`, `result_counts`, `unresolved_urls`, `pending_count`
+phản ánh dữ liệu/journal tích lũy. Có `valid_by_day`, `valid_by_category`, `zero_record_days`;
+ngày 0 bản ghi không chứng minh ngày đó không có bài báo.
+
+Status: `running` đang chạy; `checkpointed` dừng theo giới hạn config; `interrupted` bị Ctrl+C;
+`stopped` lỗi chặn/mạng nghiêm trọng; `finished` hết manifest không còn URL lỗi;
+`finished_with_errors` hết manifest nhưng còn URL lỗi cần xử lý. Hai trạng thái cuối vẫn
+không chứng minh đã thu thập đủ toàn bộ website. Lỗi từng bài không ngăn lấy bài tiếp theo;
+xem cả `backfill_report.json`, `backfill_errors.jsonl` và `backfill_results.jsonl`.
+
+Không chạy hai tiến trình cùng thư mục đầu ra. Ctrl+C giữ CSV đã ghi; nếu tiến trình bị
+kill đột ngột để lại `.crawl.lock`, chỉ xóa khóa sau khi xác nhận không còn crawler đang chạy.
+Không ghi đè dataset đã chốt; dùng một thư mục output mới cho phiên bản mới.
+
+### Tối ưu tốc độ
+
+Benchmark mới ngày 07/11/2026: **3.509 → 9.657 URL/giờ**, nhanh hơn **2,75 lần** so với
+mức tuần tự 1 giây. Đợt thử 3 worker xử lý 100 URL trong 37,28 giây, lưu 94 bài; không có
+HTTP chặn, không trùng/thiếu trường bắt buộc, phần CSV cũ và manifest giữ nguyên.
+Chỉ luồng chính parse và ghi CSV; mỗi worker có HTTP session riêng, queue tải trước hữu hạn.
+Xem [báo cáo tăng tốc song song](docs/tuoitre_rapid_speed.md) và
+[benchmark trước đó](docs/tuoitre_speed_optimization.md).
+
+`date_cache` đọc metadata ngày đăng đã xác minh từ journal các tháng khác. Chỉ bỏ request
+khi biết chắc ngày đó nằm ngoài tháng đang lấy; vẫn tải body nếu ngày thuộc tháng hiện tại.
+Metadata mâu thuẫn hoặc thiếu timezone không được dùng để skip. Journal nguồn chỉ được đọc.
+`date_cache_skips` trong report đo số request tránh được trong lượt hiện tại; lợi ích thực tế
+của cache sẽ xuất hiện khi đi qua các tháng tiếp theo.
+
+Hàng đợi đã resume lúc 20:30 với `config/tuoitre.fast.json`; không chạy thêm writer. Cấu hình benchmark hữu hạn
+`config/tuoitre.speedtest.json` chỉ dành cho kiểm tra 100 lượt khi hàng đợi đã dừng có checkpoint.
